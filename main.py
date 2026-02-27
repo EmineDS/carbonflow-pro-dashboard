@@ -146,7 +146,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- DİL SEÇİMİ ---
-lang = st.sidebar.radio("🌐 Language / Dil", ["TR", "EN"])
+lang = st.sidebar.radio("🌐 Language / Dil", ["EN","TR"])
 t = translations[lang]
 
 # --- HEADER & DISCLAIMER ---
@@ -306,4 +306,5 @@ with tab3:
             t["calc_table_cols"][3]: [f_gas, f_elec, f_cotton, f_recycled_cotton, f_log_ton_km],
             t["calc_table_cols"][4]: [s1, s2_final, s3_mat_virgin, s3_mat_recycled, s3_log]
         })
+
         st.table(calc_df)
