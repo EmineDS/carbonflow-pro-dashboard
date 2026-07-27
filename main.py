@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import io
+import re
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(
@@ -133,25 +134,107 @@ translations = {
     }
 }
 
-# --- MODERN UI TASARIMI ---
+# --- TASARIM SİSTEMİ: "ÖLÇÜM KONSOLU" (grafit + kor rengi) ---
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
-    [data-testid="stMetricValue"] { color: #111827 !important; font-weight: 700; }
-    [data-testid="stMetricLabel"] { color: #374151 !important; }
-    .stMetric { background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; }
-    .intro-text { font-size: 1.15rem; font-weight: 500; color: #ffffff; margin-bottom: 10px; line-height: 1.6;}
-    .disclaimer { font-size: 12px; color: #6b7280; border-left: 3px solid #3b82f6; padding-left: 10px; margin-bottom: 25px; }
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap');
+
+    :root{
+      --ink:#14171C; --muted:#6A7480; --hair:#E6E8EC; --canvas:#FAFAF8;
+      --ember:#E8613C; --ember-deep:#B23A1E; --panel:#14171C;
+    }
+    html, body, [class*="css"], .stApp { font-family:'Inter',sans-serif; }
+    .stApp { background:var(--canvas); }
+    [data-testid="stDecoration"]{ display:none; }          /* üstteki gökkuşağı çubuğu */
+    [data-testid="stHeader"]{ background:transparent; }
+    #MainMenu, footer { visibility:hidden; }
+
+    h1,h2,h3,h4 { font-family:'Space Grotesk',sans-serif !important; letter-spacing:-0.02em; color:var(--ink); }
+
+    /* HERO */
+    .hero-eyebrow { font-family:'Space Grotesk',sans-serif; font-size:12px; letter-spacing:3px;
+                    text-transform:uppercase; color:var(--ember); font-weight:600; }
+    .hero-title { font-family:'Space Grotesk',sans-serif; font-size:34px; font-weight:700;
+                  letter-spacing:-0.02em; color:var(--ink); margin:2px 0 8px; line-height:1.05; }
+    .hero-sub { font-size:15px; color:var(--muted); max-width:820px; line-height:1.55; }
+    .hero-rule { height:3px; width:56px; background:var(--ember); border-radius:2px; margin:16px 0 4px; }
+    .disclaimer { font-size:12px; color:var(--muted); border-left:3px solid var(--ember);
+                  padding-left:12px; margin:2px 0 22px; }
+
+    /* KONTROL DECK'İ (koyu sidebar) */
+    [data-testid="stSidebar"]{ background:var(--panel); }
+    [data-testid="stSidebar"] *{ color:#E8EAED; }
+    [data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,[data-testid="stSidebar"] h3{ color:#fff !important; }
+    [data-testid="stSidebar"] hr{ border-color:rgba(255,255,255,0.10); }
+    [data-testid="stSidebar"] input{ color:#14171C !important; }
+    [data-testid="stSidebar"] [data-baseweb="input"]{ background:#EDEEF0; border-radius:8px; }
+
+    /* METRİK KARTI = GÖSTERGE OKUMASI */
+    [data-testid="stMetric"]{ background:#fff; border:1px solid var(--hair); border-radius:14px;
+                              padding:16px 18px; box-shadow:0 1px 2px rgba(20,23,28,0.04); }
+    [data-testid="stMetricLabel"]{ font-size:11px !important; letter-spacing:1.4px; text-transform:uppercase;
+                                   color:var(--muted) !important; font-weight:600; }
+    [data-testid="stMetricLabel"] p{ font-size:11px !important; }
+    [data-testid="stMetricValue"]{ font-family:'JetBrains Mono',monospace !important; font-variant-numeric:tabular-nums;
+                                   font-weight:700; font-size:1.9rem !important; color:var(--ink) !important; white-space:nowrap; }
+    [data-testid="stMetricDelta"]{ font-size:12px !important; }
+
+    /* SEKMELER */
+    [data-testid="stTabs"] button[role="tab"]{ font-family:'Space Grotesk',sans-serif; font-weight:600; }
+    [data-testid="stTabs"] [aria-selected="true"]{ color:var(--ember) !important; }
+
+    /* SIDEBAR BUTONLARI & YÜKLEME KUTUSU (koyu zeminde okunur kontrast) */
+    [data-testid="stSidebar"] button{ background:#20242B !important; color:#E8EAED !important;
+        border:1px solid rgba(255,255,255,0.16) !important; opacity:1 !important; }
+    [data-testid="stSidebar"] button:hover{ border-color:var(--ember) !important; color:#fff !important; }
+    [data-testid="stSidebar"] button p, [data-testid="stSidebar"] button span,
+    [data-testid="stSidebar"] button div{ color:#E8EAED !important; opacity:1 !important; }
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]{ background:#1B1F26 !important;
+        border:1px dashed rgba(255,255,255,0.22) !important; }
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] *{ color:#AEB4BD !important; }
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small{ color:#8A9099 !important; }
+
+    /* METRİK ETİKETİ: kesilme yerine sar */
+    [data-testid="stMetricLabel"], [data-testid="stMetricLabel"] p{
+        white-space:normal !important; overflow:visible !important; text-overflow:clip !important; line-height:1.25; }
     </style>
     """, unsafe_allow_html=True)
+
+
+# --- PLOTLY GRAFİK TEMASI (aynı tasarım dili) ---
+EMBER_SCOPES = ["#F2A683", "#E8613C", "#9C3417"]   # Scope 1 -> 3 (açık -> koyu kor)
+
+
+def theme_fig(fig, is_bar=False):
+    fig.update_layout(
+        font=dict(family="Inter, sans-serif", color="#14171C", size=13),
+        title=dict(font=dict(family="Space Grotesk, sans-serif", size=17, color="#14171C"),
+                   x=0, xanchor="left", pad=dict(b=8)),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10, r=10, t=54, b=10),
+        legend=dict(bgcolor="rgba(0,0,0,0)"),
+    )
+    if is_bar:
+        fig.update_xaxes(showgrid=False, showline=True, linecolor="#E6E8EC",
+                         linewidth=1, zeroline=False, tickfont=dict(color="#6A7480"), title=None)
+        fig.update_yaxes(showgrid=True, gridcolor="#EEF0F2", zeroline=False,
+                         tickfont=dict(color="#6A7480"), title=None)
+    return fig
 
 # --- DİL SEÇİMİ ---
 lang = st.sidebar.radio("🌐 Language / Dil", ["EN","TR"])
 t = translations[lang]
 
-# --- HEADER & DISCLAIMER ---
-st.title(t["title"])
-st.markdown(f'<p class="intro-text">{t["intro_text"]}</p>', unsafe_allow_html=True)
+# --- HERO ---
+hero_title = re.sub(r'^[^\w]+', '', t["title"]).strip()   # baştaki emojiyi at
+st.markdown(f"""
+<div style="padding:6px 0 0;">
+  <div class="hero-eyebrow">GHG PROTOCOL &middot; SCOPE 1&ndash;2&ndash;3</div>
+  <div class="hero-title">{hero_title}</div>
+  <div class="hero-sub">{t["intro_text"]}</div>
+  <div class="hero-rule"></div>
+</div>
+""", unsafe_allow_html=True)
 st.markdown(f'<div class="disclaimer">{t["disclaimer"]}</div>', unsafe_allow_html=True)
 
 # --- EXCEL ŞABLON OLUŞTURUCU (BELLEK ÜZERİNDE) ---
@@ -242,10 +325,10 @@ grand_total = s1 + s2_final + s3_total
 
 # --- ANA EKRAN METRİKLERİ ---
 m1, m2, m3, m4 = st.columns(4)
-m1.metric(t["metric_total"], f"{grand_total:,.2f} tCO2e")
-m2.metric(t["metric_s1"], f"{s1:,.1f}")
-m3.metric(t["metric_s2"], f"{s2_final:,.1f}", delta=f"-{(s2_base-s2_final):,.1f} {t['metric_s2_delta']}")
-m4.metric(t["metric_s3"], f"{s3_total:,.1f}")
+m1.metric(t["metric_total"] + " · tCO2e", f"{grand_total:,.1f}")
+m2.metric(t["metric_s1"] + " · tCO2e", f"{s1:,.1f}")
+m3.metric(t["metric_s2"] + " · tCO2e", f"{s2_final:,.1f}", delta=f"-{(s2_base-s2_final):,.1f} {t['metric_s2_delta']}")
+m4.metric(t["metric_s3"] + " · tCO2e", f"{s3_total:,.1f}")
 
 st.markdown("---")
 
@@ -258,36 +341,56 @@ with tab1:
         fig_pie = px.pie(
             names=["Scope 1", "Scope 2", "Scope 3"],
             values=[s1, s2_final, s3_total],
-            hole=0.5,
+            hole=0.62,
             title=t["pie_title"],
-            color_discrete_sequence=px.colors.sequential.Tealgrn
+            color_discrete_sequence=EMBER_SCOPES
         )
-        fig_pie.update_traces(textposition='inside', textinfo='percent+label+value')
+        fig_pie.update_traces(
+            textposition='inside', textinfo='percent',
+            insidetextfont=dict(color="#ffffff", family="Inter", size=13),
+            marker=dict(line=dict(color="#FAFAF8", width=2))
+        )
+        theme_fig(fig_pie)
+        fig_pie.update_layout(legend=dict(orientation="h", y=-0.08, x=0.5, xanchor="center"))
+        fig_pie.add_annotation(text=f"<b>{grand_total:,.0f}</b><br><span style='color:#6A7480'>tCO2e</span>",
+                               showarrow=False, font=dict(family="JetBrains Mono", size=17, color="#14171C"))
         st.plotly_chart(fig_pie, use_container_width=True)
-        
+
     with c2:
         fig_bar = px.bar(
             x=t["bar_x_labels"],
             y=[s1, s2_final, s3_mat_virgin, s3_mat_recycled, s3_log],
             title=t["bar_title"],
-            labels={'x': t["bar_x_title"], 'y': t["bar_y_title"]},
-            color_discrete_sequence=['#2E8B57']
+            color=t["bar_x_labels"],
+            color_discrete_sequence=["#F2A683", "#E8613C", "#9C3417", "#C6613F", "#7A2A15"]
         )
-        fig_bar.update_traces(texttemplate='%{y:,.1f}', textposition='outside')
-        fig_bar.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+        fig_bar.update_traces(
+            texttemplate='%{y:,.0f}', textposition='outside',
+            textfont=dict(family="JetBrains Mono", size=11, color="#6A7480"), marker_line_width=0
+        )
+        theme_fig(fig_bar, is_bar=True)
+        fig_bar.update_layout(showlegend=False, uniformtext_minsize=8, uniformtext_mode='hide')
         st.plotly_chart(fig_bar, use_container_width=True)
 
 with tab2:
     nodes = t["sankey_nodes"]
+    node_colors = ["#3A4048", "#3A4048", "#3A4048", "#3A4048",
+                   "#F2A683", "#E8613C", "#9C3417", "#B23A1E"]
     fig_sankey = go.Figure(data=[go.Sankey(
-        node=dict(pad=15, thickness=20, label=nodes, color="#111827"),
+        node=dict(pad=18, thickness=22, label=nodes, color=node_colors,
+                  line=dict(color="#FAFAF8", width=0)),
         link=dict(
             source=[0, 0, 1, 2, 3, 4, 5, 6],
             target=[4, 5, 6, 6, 6, 7, 7, 7],
             value=[s1, s2_base, s3_mat_virgin, s3_mat_recycled, s3_log, s1, s2_final, s3_total],
-            color="rgba(46, 139, 87, 0.4)"
+            color="rgba(232, 97, 60, 0.32)"
         )
     )])
+    fig_sankey.update_layout(
+        font=dict(family="Inter, sans-serif", color="#14171C", size=13),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=10, r=10, t=24, b=10)
+    )
     st.plotly_chart(fig_sankey, use_container_width=True)
 
 with tab3:
