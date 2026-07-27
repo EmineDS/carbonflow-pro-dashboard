@@ -197,6 +197,19 @@ st.markdown("""
     /* METRİK ETİKETİ: kesilme yerine sar */
     [data-testid="stMetricLabel"], [data-testid="stMetricLabel"] p{
         white-space:normal !important; overflow:visible !important; text-overflow:clip !important; line-height:1.25; }
+
+    /* VERİ KAYNAĞI ŞERİDİ */
+    .source-strip{ display:flex; align-items:center; flex-wrap:wrap; gap:9px 14px; background:#fff;
+        border:1px solid var(--hair); border-radius:12px; padding:11px 16px; margin:6px 0 24px;
+        box-shadow:0 1px 2px rgba(20,23,28,0.04); }
+    .source-kicker{ font-family:'Space Grotesk',sans-serif; font-size:10.5px; letter-spacing:2px;
+        text-transform:uppercase; color:var(--ember); font-weight:700; padding-right:14px;
+        border-right:1px solid var(--hair); }
+    .source-primary{ display:inline-flex; align-items:center; gap:8px; font-weight:600; color:var(--ink); font-size:14px; }
+    .source-primary svg{ width:15px; height:17px; fill:var(--ink); flex:none; }
+    .hm-mark{ color:#E50010; font-family:'Space Grotesk',sans-serif; font-weight:800; letter-spacing:-0.5px; }
+    .source-chip{ font-size:12px; color:var(--muted); background:#F4F5F7; border:1px solid var(--hair);
+        border-radius:20px; padding:3px 11px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -235,7 +248,17 @@ st.markdown(f"""
   <div class="hero-rule"></div>
 </div>
 """, unsafe_allow_html=True)
-st.markdown(f'<div class="disclaimer">{t["disclaimer"]}</div>', unsafe_allow_html=True)
+src_kicker = "VERİ KAYNAĞI" if lang == "TR" else "DATA SOURCE"
+src_note = "referans · simüle" if lang == "TR" else "reference · simulated"
+st.markdown(f"""
+<div class="source-strip">
+  <span class="source-kicker">{src_kicker}</span>
+  <span class="source-primary"><span class="hm-mark">H&amp;M</span>&nbsp;Group &middot; 2023 Annual &amp; Sustainability Report</span>
+  <span class="source-chip">GHG Protocol &middot; Scope 1&ndash;2&ndash;3</span>
+  <span class="source-chip">LCA emission factors</span>
+  <span class="source-chip">{src_note}</span>
+</div>
+""", unsafe_allow_html=True)
 
 # --- EXCEL ŞABLON OLUŞTURUCU (BELLEK ÜZERİNDE) ---
 template_data = {
